@@ -2,21 +2,17 @@ import csv
 import functools
 import json
 import logging
-import os
 import threading
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from threading import currentThread, Thread
+from threading import Thread
 from typing import Tuple, Optional, Any
 
-import google.auth
 import requests
 import schedule
-
-from requests.exceptions import HTTPError
 
 logging.basicConfig(filename="monitor_response_times_v2.log",
                     filemode="w",
