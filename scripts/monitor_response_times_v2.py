@@ -136,8 +136,8 @@ class TerraMethods(MonitoringUtilityMethods):
             'content-type': "application/json"
         }
 
-        # TODO Need to explicitly request an access URL?
-        data = json.dumps(dict(url=drs_uri))
+        # Request the same fields as the Terra workflow DRS Localizer does.
+        data = json.dumps(dict(url=drs_uri, fields=['gsUri', 'googleServiceAccount', 'accessUrl', 'hashes']))
 
         start_time = time.time()
         resp = requests.post(f"https://{self.terra_info.martha_host}/martha_v3/",
@@ -314,9 +314,24 @@ class ResponseTimeMonitor(Scheduler):
 
         def measure_and_report(self):
             monitoring_infos = self.measure_response_times()
-
             self.write_monitoring_info_to_csv(monitoring_infos, self.output_filename)
 
+    class MarthaResponseTimeReporter(AbstractResponseTimeReporter, TerraMethods):
+        def __init__(self, output_filename):
+            super().__init__(output_filename)
+
+        def measure_response_times(self) -> dict:
+            monitoring_infos = dict()
+            terra_user_token = self.get_terra_user_pet_sa_token()
+
+            # Get Martha response time
+            resp_json, mon_info = self.get_martha_drs_response(terra_user_token)
+            monitoring_infos['martha'] = mon_info
+            return monitoring_infos
+
+        def measure_and_report(self):
+            monitoring_infos = self.measure_response_times()
+            self.write_monitoring_info_to_csv(monitoring_infos, self.output_filename)
 
     # class BondResponseTimeReporter(AbstractResponseTimeReporter, TerraMethods):
     #     def __init__(self, output_filename):
@@ -374,6 +389,12 @@ class ResponseTimeMonitor(Scheduler):
         reporter = self.DrsFlowResponseTimeReporter(output_filename)
         reporter.measure_and_report()
 
+    @catch_exceptions()
+    def check_martha_response_time(self):
+        output_filename = "martha_response_time"
+        reporter = self.MarthaResponseTimeReporter(output_filename)
+        reporter.measure_and_report()
+
     # @catch_exceptions()
     # def check_bond_response_time(self):
     #     output_filename = "bond_fence_token_response_times.csv"
@@ -388,6 +409,7 @@ class ResponseTimeMonitor(Scheduler):
 
     def configure_monitoring(self):
         schedule.every(self.interval_seconds).seconds.do(super().run_threaded, self.check_drs_flow_response_times)
+        schedule.every(self.interval_seconds).seconds.do(super().run_threaded, self.check_martha_response_time)
         # schedule.every(self.interval_seconds).seconds.do(super().run_threaded, self.check_bond_response_time)
         # schedule.every(self.interval_seconds).seconds.do(super().run_threaded, self.check_fence_response_time)
 
