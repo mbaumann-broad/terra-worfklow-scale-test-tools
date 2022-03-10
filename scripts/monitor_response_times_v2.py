@@ -429,10 +429,15 @@ responseTimeMonitor = ResponseTimeMonitor()
 responseTimeMonitor.configure_monitoring()
 responseTimeMonitor.start_monitoring()
 
-# Run for a while
-print("Starting sleep ...")
-time.sleep(90)
-print("Done sleeping")
+# # Run for a while
+# print("Starting sleep ...")
+# time.sleep(90)
+# print("Done sleeping")
+#
+# # Stop monitoring
+# responseTimeMonitor.stop_monitoring()
 
-# Stop monitoring
-responseTimeMonitor.stop_monitoring()
+print("Running ", end = '')
+while True:
+    print(".", end = '')
+    time.sleep(10)
