@@ -378,30 +378,25 @@ class ResponseTimeMonitor(Scheduler):
             monitoring_infos = self.measure_response_times()
             self.write_monitoring_info_to_csv(monitoring_infos, self.output_filename)
 
-    # class FenceResponseTimeReporter(AbstractResponseTimeReporter, Gen3Methods):
-    #     def __init__(self, output_filename):
-    #         super().__init__(output_filename)
-    #
-    #     # TODO Support configuration of this by project and deployment tier.
-    #     FENCE_HOST = "staging.gen3.biodatacatalyst.nhlbi.nih.gov"
-    #
-    #     def measure_response_time(self) -> Tuple[float, int]:
-    #         # Measure Fence health status check response time
-    #         print(f"{datetime.now()} checking fence response time on {currentThread().name}")
-    #         start_time = time.time()
-    #         headers = {
-    #             'accept': "*/*"
-    #         }
-    #         resp = requests.get(f"https://{self.FENCE_HOST}/_status", headers=headers)
-    #         duration = time.time() - start_time
-    #         return duration, resp.status_code
-    #
-    #     def measure_and_report(self):
-    #         start_time = datetime.now()
-    #         response_duration, status_code = self.measure_response_time()
-    #         response_duration = round(response_duration, 3)
-    #         with open(self.output_filename, "a") as fh:
-    #             fh.write(f"{start_time},{response_duration},{status_code}\n")
+    class FenceUserInfoResponseTimeReporter(AbstractResponseTimeReporter, TerraMethods, Gen3Methods):
+        def __init__(self, output_filename):
+            super().__init__(output_filename)
+
+        def measure_response_times(self) -> dict:
+            monitoring_infos = dict()
+            terra_user_token = self.get_terra_user_pet_sa_token()
+            fence_user_token, _ = self.get_fence_token_from_bond(terra_user_token)
+
+            # Get Fence user info response time as a response time indicator for the
+            # Gen3 Fence k8s portition for auth services, which is separate
+            # from the partition for signed URL requests.
+            resp_json, mon_info = self.get_fence_userinfo(fence_user_token)
+            monitoring_infos['fence_user_info'] = mon_info
+            return monitoring_infos
+
+        def measure_and_report(self):
+            monitoring_infos = self.measure_response_times()
+            self.write_monitoring_info_to_csv(monitoring_infos, self.output_filename)
 
     @catch_exceptions()
     def check_drs_flow_response_times(self):
@@ -421,18 +416,17 @@ class ResponseTimeMonitor(Scheduler):
         reporter = self.BondExternalIdentityResponseTimeReporter(output_filename)
         reporter.measure_and_report()
 
-    # @catch_exceptions()
-    # def check_fence_response_time(self):
-    #     output_filename = "fence_health_status_response_times.csv"
-    #     reporter = self.FenceResponseTimeReporter(output_filename)
-    #     reporter.measure_and_report()
+    @catch_exceptions()
+    def check_fence_user_info_response_time(self):
+        output_filename = "fence_user_info_response_time"
+        reporter = self.FenceUserInfoResponseTimeReporter(output_filename)
+        reporter.measure_and_report()
 
     def configure_monitoring(self):
         schedule.every(self.interval_seconds).seconds.do(super().run_threaded, self.check_drs_flow_response_times)
         schedule.every(self.interval_seconds).seconds.do(super().run_threaded, self.check_martha_response_time)
         schedule.every(self.interval_seconds).seconds.do(super().run_threaded, self.check_bond_external_identity_response_times)
-        # schedule.every(self.interval_seconds).seconds.do(super().run_threaded, self.check_fence_response_time)
-
+        schedule.every(self.interval_seconds).seconds.do(super().run_threaded, self.check_fence_user_info_response_time)
 
 # Configure and start monitoring
 responseTimeMonitor = ResponseTimeMonitor()
