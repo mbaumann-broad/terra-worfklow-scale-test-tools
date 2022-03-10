@@ -115,6 +115,18 @@ class TerraMethods(MonitoringUtilityMethods):
         token = resp.json().get('token') if resp.ok else None
         return token, self.monitoring_info(start_time, resp)
 
+    def get_service_account_key_from_bond(self, terra_user_token: str) -> Tuple[dict, dict]:
+        headers = {
+            'authorization': f"Bearer {terra_user_token}",
+            'content-type': "application/json"
+        }
+        start_time = time.time()
+        resp = requests.get(f"https://{self.terra_info.bond_host}/api/link/v1/{self.terra_info.bond_provider}/serviceaccount/key",
+                            headers=headers)
+        logger.debug(f"Request URL: {resp.request.url}")
+        sa_key = resp.json().get('data') if resp.ok else None
+        return sa_key, self.monitoring_info(start_time, resp)
+
     def get_martha_drs_response(self, terra_user_token: str, drs_uri: str = None) -> Tuple[dict, dict]:
         if drs_uri is None:
             drs_uri = self.gen3_info.public_drs_uri
@@ -182,8 +194,8 @@ class Gen3Methods(MonitoringUtilityMethods):
         resp = requests.get(f"https://{self.gen3_info.gen3_host}/ga4gh/drs/v1/objects/{object_id}/access/{access_id}",
                             headers=headers)
         logger.debug(f"Request URL: {resp.request.url}")
-        resp_json = resp.json() if resp.ok else None
-        return resp_json, self.monitoring_info(start_time, resp)
+        access_url = resp.json().get('url') if resp.ok else None
+        return access_url, self.monitoring_info(start_time, resp)
 
     def get_fence_userinfo(self, fence_user_token: str):
         headers = {
@@ -285,10 +297,14 @@ class ResponseTimeMonitor(Scheduler):
                 # Get Fence user token from Bond
                 fence_user_token, mon_info = self.get_fence_token_from_bond(terra_user_token)
                 monitoring_infos['bond_get_access_token'] = mon_info
-                assert fence_user_token is not None
+                assert fence_user_token is not None, "Failed to get Fence user token."
+
+                # Get service account key from Bond
+                sa_key, mon_info = self.get_service_account_key_from_bond(terra_user_token)
+                monitoring_infos['bond_get_sa_key'] = mon_info
 
                 # Get signed URL from Fence
-                resp_json, mon_info = self.get_gen3_drs_access(fence_user_token)
+                access_url, mon_info = self.get_gen3_drs_access(fence_user_token)
                 monitoring_infos['fence_get_signed_url'] = mon_info
 
             except Exception as ex:
