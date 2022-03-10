@@ -103,6 +103,29 @@ class TerraMethods(MonitoringUtilityMethods):
         token = creds.token
         return token
 
+    def get_external_identity_link_url_from_bond(self) -> Tuple[str, dict]:
+        headers = {
+            'content-type': "*/*"
+        }
+        start_time = time.time()
+        resp = requests.options(f"https://{self.terra_info.bond_host}/api/link/v1/{self.terra_info.bond_provider}/authorization-url?scopes=openid&scopes=google_credentials&scopes=data&scopes=user&redirect_uri=https://app.terra.bio/#fence-callback&state=eyJwcm92aWRlciI6ImZlbmNlIn0=",
+                                headers=headers)
+        logger.debug(f"Request URL: {resp.request.url}")
+        link_url = resp.url if resp.ok else None
+        return link_url, self.monitoring_info(start_time, resp)
+
+    def get_external_identity_status_from_bond(self, terra_user_token: str) -> Tuple[dict, dict]:
+        headers = {
+            'authorization': f"Bearer {terra_user_token}",
+            'content-type': "application/json"
+        }
+        start_time = time.time()
+        resp = requests.get(f"https://{self.terra_info.bond_host}/api/link/v1/{self.terra_info.bond_provider}",
+                            headers=headers)
+        logger.debug(f"Request URL: {resp.request.url}")
+        resp_json = resp.json() if resp.ok else None
+        return resp_json, self.monitoring_info(start_time, resp)
+
     def get_fence_token_from_bond(self, terra_user_token: str) -> Tuple[str, dict]:
         headers = {
             'authorization': f"Bearer {terra_user_token}",
@@ -333,31 +356,28 @@ class ResponseTimeMonitor(Scheduler):
             monitoring_infos = self.measure_response_times()
             self.write_monitoring_info_to_csv(monitoring_infos, self.output_filename)
 
-    # class BondResponseTimeReporter(AbstractResponseTimeReporter, TerraMethods):
-    #     def __init__(self, output_filename):
-    #         super().__init__(output_filename)
-    #
-    #     def measure_response_time(self) -> Tuple[float, int]:
-    #         # Measure Bond response time
-    #         terra_user_token = self.get_terra_user_pet_sa_token()
-    #         print(f"{datetime.now()} checking bond response time on {currentThread().name}")
-    #         start_time = time.time()
-    #         headers = {
-    #             'authorization': f"Bearer {terra_user_token}",
-    #             'content-type': "application/json"
-    #         }
-    #         resp = requests.get(f"https://{self.terra_info.bond_host}/api/link/v1/{self.terra_info.bond_provider}/accesstoken",
-    #                             headers=headers)
-    #         duration = time.time() - start_time
-    #         return duration, resp.status_code
-    #
-    #     def measure_and_report(self):
-    #         start_time = datetime.now()
-    #         response_duration, status_code = self.measure_response_time()
-    #         response_duration = round(response_duration, 3)
-    #         with open(self.output_filename, "a") as fh:
-    #             fh.write(f"{start_time},{response_duration},{status_code}\n")
-    #
+    class BondExternalIdentityResponseTimeReporter(AbstractResponseTimeReporter, TerraMethods):
+        def __init__(self, output_filename):
+            super().__init__(output_filename)
+
+        def measure_response_times(self) -> dict:
+            monitoring_infos = dict()
+            terra_user_token = self.get_terra_user_pet_sa_token()
+
+            # Get Bond external identity link URL response time
+            link_url, mon_info = self.get_external_identity_link_url_from_bond()
+            monitoring_infos['bond_get_link_url'] = mon_info
+
+            # Get Bond external identity status response time
+            resp_json, mon_info = self.get_external_identity_status_from_bond(terra_user_token)
+            monitoring_infos['bond_get_link_status'] = mon_info
+
+            return monitoring_infos
+
+        def measure_and_report(self):
+            monitoring_infos = self.measure_response_times()
+            self.write_monitoring_info_to_csv(monitoring_infos, self.output_filename)
+
     # class FenceResponseTimeReporter(AbstractResponseTimeReporter, Gen3Methods):
     #     def __init__(self, output_filename):
     #         super().__init__(output_filename)
@@ -395,12 +415,12 @@ class ResponseTimeMonitor(Scheduler):
         reporter = self.MarthaResponseTimeReporter(output_filename)
         reporter.measure_and_report()
 
-    # @catch_exceptions()
-    # def check_bond_response_time(self):
-    #     output_filename = "bond_fence_token_response_times.csv"
-    #     reporter = self.BondResponseTimeReporter(output_filename)
-    #     reporter.measure_and_report()
-    #
+    @catch_exceptions()
+    def check_bond_external_identity_response_times(self):
+        output_filename = "bond_external_idenity_response_times"
+        reporter = self.BondExternalIdentityResponseTimeReporter(output_filename)
+        reporter.measure_and_report()
+
     # @catch_exceptions()
     # def check_fence_response_time(self):
     #     output_filename = "fence_health_status_response_times.csv"
@@ -410,7 +430,7 @@ class ResponseTimeMonitor(Scheduler):
     def configure_monitoring(self):
         schedule.every(self.interval_seconds).seconds.do(super().run_threaded, self.check_drs_flow_response_times)
         schedule.every(self.interval_seconds).seconds.do(super().run_threaded, self.check_martha_response_time)
-        # schedule.every(self.interval_seconds).seconds.do(super().run_threaded, self.check_bond_response_time)
+        schedule.every(self.interval_seconds).seconds.do(super().run_threaded, self.check_bond_external_identity_response_times)
         # schedule.every(self.interval_seconds).seconds.do(super().run_threaded, self.check_fence_response_time)
 
 
