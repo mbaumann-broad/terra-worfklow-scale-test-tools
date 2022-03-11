@@ -1,4 +1,5 @@
 google-auth
+matplotlib
 pandas
 requests
 schedule
