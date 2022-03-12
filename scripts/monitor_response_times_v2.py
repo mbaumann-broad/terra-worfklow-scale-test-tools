@@ -313,14 +313,14 @@ class ResponseTimeMonitor(Scheduler):
                 drs_metadata, mon_info = self.get_gen3_drs_resolution()
                 monitoring_infos['indexd_get_metadata'] = mon_info
 
+                # Get service account key from Bond
+                sa_key, mon_info = self.get_service_account_key_from_bond(terra_user_token)
+                monitoring_infos['bond_get_sa_key'] = mon_info
+
                 # Get Fence user token from Bond
                 fence_user_token, mon_info = self.get_fence_token_from_bond(terra_user_token)
                 monitoring_infos['bond_get_access_token'] = mon_info
                 assert fence_user_token is not None, "Failed to get Fence user token."
-
-                # Get service account key from Bond
-                sa_key, mon_info = self.get_service_account_key_from_bond(terra_user_token)
-                monitoring_infos['bond_get_sa_key'] = mon_info
 
                 # Get signed URL from Fence
                 access_url, mon_info = self.get_gen3_drs_access(fence_user_token)
