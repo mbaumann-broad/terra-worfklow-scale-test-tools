@@ -14,11 +14,18 @@ from typing import Tuple, Optional, Any
 import requests
 import schedule
 
-logging.basicConfig(filename="monitor_response_times_v2.log",
-                    filemode="w",
-                    level=logging.DEBUG)
-logger = logging.getLogger()
 run_date_time_stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+logging.basicConfig(
+    format='%(asctime)s %(levelname)-8s %(message)s',
+    datefmt='%Y/%m/%d %H:%M:%S',
+    filename=f"monitor_response_times_v2_{run_date_time_stamp}.log",
+    filemode="w",
+    level=logging.DEBUG)
+logging.Formatter.converter=time.gmtime
+logger = logging.getLogger()
+
+
 
 class DeploymentInfo:
     @dataclass
