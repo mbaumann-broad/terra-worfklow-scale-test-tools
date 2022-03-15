@@ -17,7 +17,7 @@ import schedule
 run_date_time_stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
 logging.basicConfig(
-    format='%(asctime)s %(levelname)-8s %(message)s',
+    format='%(asctime)s %(levelname)-8s %(threadName)-12s %(message)s',
     datefmt='%Y/%m/%d %H:%M:%S',
     filename=f"monitor_response_times_v2_{run_date_time_stamp}.log",
     filemode="w",
