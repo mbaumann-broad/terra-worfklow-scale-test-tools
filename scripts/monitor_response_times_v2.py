@@ -272,11 +272,11 @@ class Scheduler:
         job_thread.start()
 
     def start_monitoring(self):
-        print("Starting background response time monitoring")
+        logger.info("Starting background response time monitoring")
         self.stop_run_continuously = self.run_continuously()
 
     def stop_monitoring(self):
-        print("Stopping background response time monitoring")
+        logger.info("Stopping background response time monitoring")
         self.stop_run_continuously.set()
 
 
@@ -291,7 +291,7 @@ class ResponseTimeMonitor(Scheduler):
                     return job_func(*args, **kwargs)
                 except:
                     import traceback
-                    print(traceback.format_exc())
+                    logger.error(traceback.format_exc())
                     if cancel_on_failure:
                         return schedule.CancelJob
 
