@@ -56,10 +56,12 @@ class DeploymentInfo:
 
 class MonitoringUtilityMethods:
 
-    def format_timestamp_as_utc(self, seconds_since_epoch: float):
-        return datetime.fromtimestamp(time.time(), timezone.utc).strftime("%Y/%m/%d %H:%M:%S")
+    @staticmethod
+    def format_timestamp_as_utc(seconds_since_epoch: float):
+        return datetime.fromtimestamp(seconds_since_epoch, timezone.utc).strftime("%Y/%m/%d %H:%M:%S")
 
-    def monitoring_info(self, start_time: float, response: requests.Response):
+    @staticmethod
+    def monitoring_info(start_time: float, response: requests.Response):
         response_duration = round(time.time() - start_time, 3)
         response_code = response.status_code
         response_reason = response.reason
