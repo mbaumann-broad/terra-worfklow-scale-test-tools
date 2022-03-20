@@ -1,7 +1,9 @@
+import argparse
 import csv
 import functools
 import json
 import logging
+import os
 import threading
 import time
 from abc import ABC, abstractmethod
@@ -13,18 +15,6 @@ from typing import Tuple, Optional, Any
 
 import requests
 import schedule
-
-run_date_time_stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-logging.basicConfig(
-    format='%(asctime)s %(levelname)-8s %(threadName)-12s %(message)s',
-    datefmt='%Y/%m/%d %H:%M:%S',
-    filename=f"monitor_response_times_v2_{run_date_time_stamp}.log",
-    filemode="w",
-    level=logging.DEBUG)
-logging.Formatter.converter=time.gmtime
-logger = logging.getLogger()
-
 
 
 class DeploymentInfo:
@@ -78,13 +68,13 @@ class MonitoringUtilityMethods:
                     flattened[f"{operation_name}.{metric}"] = value
         return flattened
 
-    def get_output_filename_with_run_timestamp(self, output_file_basename:str , suffix: str):
-        global run_date_time_stamp
-        return f"{output_file_basename}_{run_date_time_stamp}.{suffix}"
+    @staticmethod
+    def get_output_filepath(output_filename: str):
+        global output_dir
+        return os.path.join(output_dir, output_filename)
 
-
-    def write_monitoring_info_to_csv(self, monitoring_info_dict: dict, output_file_basename: str) -> None:
-        output_filename = self.get_output_filename_with_run_timestamp(output_file_basename, "csv")
+    def write_monitoring_info_to_csv(self, monitoring_info_dict: dict, output_filename: str) -> None:
+        output_filename = self.get_output_filepath(output_filename)
         write_header = False if Path(output_filename).exists() else True
 
         row_info = self.flatten_monitoring_info_dict(monitoring_info_dict)
@@ -101,7 +91,8 @@ class TerraMethods(MonitoringUtilityMethods):
     gen3_info = DeploymentInfo().gen3_factory()
 
     # When run in Terra, this returns the Terra user pet SA token
-    def get_terra_user_pet_sa_token(self) -> str:
+    @staticmethod
+    def get_terra_user_pet_sa_token() -> str:
         import google.auth.transport.requests
         creds, projects = google.auth.default()
         creds.refresh(google.auth.transport.requests.Request())
@@ -282,24 +273,26 @@ class Scheduler:
         self.stop_run_continuously.set()
 
 
+def catch_exceptions(cancel_on_failure=False):
+    def catch_exceptions_decorator(job_func):
+        @functools.wraps(job_func)
+        def wrapper(*args, **kwargs):
+            # noinspection PyBroadException
+            try:
+                return job_func(*args, **kwargs)
+            except:
+                import traceback
+                logger.error(traceback.format_exc())
+                if cancel_on_failure:
+                    return schedule.CancelJob
+
+        return wrapper
+
+    return catch_exceptions_decorator
+
+
 class ResponseTimeMonitor(Scheduler):
     interval_seconds = 30
-    def catch_exceptions(cancel_on_failure=False):
-        def catch_exceptions_decorator(job_func):
-            @functools.wraps(job_func)
-            def wrapper(*args, **kwargs):
-                # noinspection PyBroadException
-                try:
-                    return job_func(*args, **kwargs)
-                except:
-                    import traceback
-                    logger.error(traceback.format_exc())
-                    if cancel_on_failure:
-                        return schedule.CancelJob
-
-            return wrapper
-
-        return catch_exceptions_decorator
 
     class AbstractResponseTimeReporter(ABC):
         def __init__(self, output_filename):
@@ -405,25 +398,25 @@ class ResponseTimeMonitor(Scheduler):
 
     @catch_exceptions()
     def check_drs_flow_response_times(self):
-        output_filename = "drs_flow_response_times"
+        output_filename = "drs_flow_response_times.csv"
         reporter = self.DrsFlowResponseTimeReporter(output_filename)
         reporter.measure_and_report()
 
     @catch_exceptions()
     def check_martha_response_time(self):
-        output_filename = "martha_response_time"
+        output_filename = "martha_response_time.csv"
         reporter = self.MarthaResponseTimeReporter(output_filename)
         reporter.measure_and_report()
 
     @catch_exceptions()
     def check_bond_external_identity_response_times(self):
-        output_filename = "bond_external_idenity_response_times"
+        output_filename = "bond_external_idenity_response_times.csv"
         reporter = self.BondExternalIdentityResponseTimeReporter(output_filename)
         reporter.measure_and_report()
 
     @catch_exceptions()
     def check_fence_user_info_response_time(self):
-        output_filename = "fence_user_info_response_time"
+        output_filename = "fence_user_info_response_time.csv"
         reporter = self.FenceUserInfoResponseTimeReporter(output_filename)
         reporter.measure_and_report()
 
@@ -432,6 +425,41 @@ class ResponseTimeMonitor(Scheduler):
         schedule.every(self.interval_seconds).seconds.do(super().run_threaded, self.check_martha_response_time)
         schedule.every(self.interval_seconds).seconds.do(super().run_threaded, self.check_bond_external_identity_response_times)
         schedule.every(self.interval_seconds).seconds.do(super().run_threaded, self.check_fence_user_info_response_time)
+
+
+def configure_logging(output_directory_path: str) -> logging.Logger:
+    log_filename = os.path.join(output_directory_path, "monitor_response_times.log")
+    logging.basicConfig(
+        format='%(asctime)s %(levelname)-8s %(threadName)-12s %(message)s',
+        datefmt='%Y/%m/%d %H:%M:%S',
+        filename=log_filename,
+        filemode="w",
+        level=logging.DEBUG)
+    logging.Formatter.converter = time.gmtime
+    print(f"Logging to file: {log_filename}")
+    return logging.getLogger()
+
+
+def parse_cmdline() -> argparse.Namespace:
+    utc_timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--output-dir', type=str, required=False,
+                        default=f"./monitoring_output_{utc_timestamp}",
+                        help="Directory to contain monitoring output files")
+    args = parser.parse_args()
+    return args
+
+
+def create_output_directory(directory_path: str) -> None:
+    Path(directory_path).mkdir(parents=True, exist_ok=True)
+
+#
+# Main Execution
+#
+args = parse_cmdline()
+create_output_directory(args.output_dir)
+output_dir = args.output_dir
+logger = configure_logging(args.output_dir)
 
 # Configure and start monitoring
 responseTimeMonitor = ResponseTimeMonitor()
