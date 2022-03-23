@@ -9,6 +9,7 @@ import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from enum import Enum
 from pathlib import Path
 from threading import Thread
 from typing import Tuple, Optional, Any
@@ -18,6 +19,42 @@ import schedule
 
 
 class DeploymentInfo:
+    _project = None
+    _terra_deployment_tier = None
+    _terra_deployment_info = None
+    _gen3_deployment_info = None
+
+    class Project(Enum):
+        ANVIL = 1
+        BDC = 2
+        CRDC = 3
+        KF = 4
+
+    @classmethod
+    def set_project(cls, project_name: str) -> None:
+        project = project_name.strip().upper()
+        try:
+            project_value = cls.Project[project]
+        except KeyError as ex:
+            raise Exception(f"Unsupported project name: '{project_name}'", ex)
+        cls._project = project_value
+
+    class TerraDeploymentTier(Enum):
+        DEV = 1
+        ALPHA = 2
+        PERF = 3
+        STAGING = 4
+        PROD = 5
+
+    @classmethod
+    def set_terra_deployment_tier(cls, tier_name: str) -> None:
+        tier = tier_name.strip().upper()
+        try:
+            tier_value = cls.TerraDeploymentTier[tier]
+        except KeyError as ex:
+            raise Exception(f"Invalid Terra deployment tier name: '{tier_name}'", ex)
+        cls._terra_deployment_tier = tier_value
+
     @dataclass
     class TerraDeploymentInfo:
         bond_host: str
@@ -37,14 +74,33 @@ class DeploymentInfo:
     __gen3_bdc_staging = Gen3DeploymentInfo("staging.gen3.biodatacatalyst.nhlbi.nih.gov",
                                             "drs://dg.712C:dg.712C/fa640b0e-9779-452f-99a6-16d833d15bd0")
 
-    def terra_factory(self) -> TerraDeploymentInfo:
-        return self.__terra_bdc_dev
+    class UnsupportedConfigurationException(Exception):
+        pass
 
-    def gen3_factory(self) -> Gen3DeploymentInfo:
-        return self.__gen3_bdc_staging
+    @classmethod
+    def terra_factory(cls) -> TerraDeploymentInfo:
+        if cls._terra_deployment_info is None:
+            if cls._project == cls.Project.BDC and cls._terra_deployment_tier == cls.TerraDeploymentTier.DEV:
+                cls._terra_deployment_info = cls.__terra_bdc_dev
+            else:
+                raise cls.UnsupportedConfigurationException(
+                    f"The combination of project \'{cls._project.name}\' and Terra deployment tier \'{cls._terra_deployment_tier.name}\' is currently unsupported.")
+        return cls._terra_deployment_info
+
+    @classmethod
+    def gen3_factory(cls) -> Gen3DeploymentInfo:
+        if cls._gen3_deployment_info is None:
+            if cls._project == cls.Project.BDC and cls._terra_deployment_tier != cls.TerraDeploymentTier.PROD:
+                cls._gen3_deployment_info = cls.__gen3_bdc_staging
+            else:
+                raise cls.UnsupportedConfigurationException(
+                    f"The combination of project '{cls._project.name}' and Terra deployment tier '{cls._terra_deployment_tier.name}' is currently unsupported.")
+        return cls._gen3_deployment_info
 
 
 class MonitoringUtilityMethods:
+    def __init__(self):
+        super().__init__()
 
     @staticmethod
     def format_timestamp_as_utc(seconds_since_epoch: float):
@@ -87,8 +143,10 @@ class MonitoringUtilityMethods:
 
 
 class TerraMethods(MonitoringUtilityMethods):
-    terra_info = DeploymentInfo().terra_factory()
-    gen3_info = DeploymentInfo().gen3_factory()
+    def __init__(self):
+        super().__init__()
+        self._terra_info = DeploymentInfo.terra_factory()
+        self._gen3_info = DeploymentInfo.gen3_factory()
 
     # When run in Terra, this returns the Terra user pet SA token
     @staticmethod
@@ -104,8 +162,9 @@ class TerraMethods(MonitoringUtilityMethods):
             'content-type': "*/*"
         }
         start_time = time.time()
-        resp = requests.options(f"https://{self.terra_info.bond_host}/api/link/v1/{self.terra_info.bond_provider}/authorization-url?scopes=openid&scopes=google_credentials&scopes=data&scopes=user&redirect_uri=https://app.terra.bio/#fence-callback&state=eyJwcm92aWRlciI6ImZlbmNlIn0=",
-                                headers=headers)
+        resp = requests.options(
+            f"https://{self._terra_info.bond_host}/api/link/v1/{self._terra_info.bond_provider}/authorization-url?scopes=openid&scopes=google_credentials&scopes=data&scopes=user&redirect_uri=https://app.terra.bio/#fence-callback&state=eyJwcm92aWRlciI6ImZlbmNlIn0=",
+            headers=headers)
         logger.debug(f"Request URL: {resp.request.url}")
         link_url = resp.url if resp.ok else None
         return link_url, self.monitoring_info(start_time, resp)
@@ -116,7 +175,7 @@ class TerraMethods(MonitoringUtilityMethods):
             'content-type': "application/json"
         }
         start_time = time.time()
-        resp = requests.get(f"https://{self.terra_info.bond_host}/api/link/v1/{self.terra_info.bond_provider}",
+        resp = requests.get(f"https://{self._terra_info.bond_host}/api/link/v1/{self._terra_info.bond_provider}",
                             headers=headers)
         logger.debug(f"Request URL: {resp.request.url}")
         resp_json = resp.json() if resp.ok else None
@@ -128,8 +187,9 @@ class TerraMethods(MonitoringUtilityMethods):
             'content-type': "application/json"
         }
         start_time = time.time()
-        resp = requests.get(f"https://{self.terra_info.bond_host}/api/link/v1/{self.terra_info.bond_provider}/accesstoken",
-                            headers=headers)
+        resp = requests.get(
+            f"https://{self._terra_info.bond_host}/api/link/v1/{self._terra_info.bond_provider}/accesstoken",
+            headers=headers)
         logger.debug(f"Request URL: {resp.request.url}")
         token = resp.json().get('token') if resp.ok else None
         return token, self.monitoring_info(start_time, resp)
@@ -140,15 +200,16 @@ class TerraMethods(MonitoringUtilityMethods):
             'content-type': "application/json"
         }
         start_time = time.time()
-        resp = requests.get(f"https://{self.terra_info.bond_host}/api/link/v1/{self.terra_info.bond_provider}/serviceaccount/key",
-                            headers=headers)
+        resp = requests.get(
+            f"https://{self._terra_info.bond_host}/api/link/v1/{self._terra_info.bond_provider}/serviceaccount/key",
+            headers=headers)
         logger.debug(f"Request URL: {resp.request.url}")
         sa_key = resp.json().get('data') if resp.ok else None
         return sa_key, self.monitoring_info(start_time, resp)
 
     def get_martha_drs_response(self, terra_user_token: str, drs_uri: str = None) -> Tuple[dict, dict]:
         if drs_uri is None:
-            drs_uri = self.gen3_info.public_drs_uri
+            drs_uri = self._gen3_info.public_drs_uri
 
         headers = {
             'authorization': f"Bearer {terra_user_token}",
@@ -159,7 +220,7 @@ class TerraMethods(MonitoringUtilityMethods):
         data = json.dumps(dict(url=drs_uri, fields=['gsUri', 'googleServiceAccount', 'accessUrl', 'hashes']))
 
         start_time = time.time()
-        resp = requests.post(f"https://{self.terra_info.martha_host}/martha_v3/",
+        resp = requests.post(f"https://{self._terra_info.martha_host}/martha_v3/",
                              headers=headers, data=data)
         logger.debug(f"Request URL: {resp.request.url}")
         resp_json = resp.json() if resp.ok else None
@@ -167,8 +228,9 @@ class TerraMethods(MonitoringUtilityMethods):
 
 
 class Gen3Methods(MonitoringUtilityMethods):
-
-    gen3_info = DeploymentInfo().gen3_factory()
+    def __init__(self):
+        super().__init__()
+        self.gen3_info = DeploymentInfo.gen3_factory()
 
     def get_gen3_drs_resolution(self, drs_uri: str = None) -> Tuple[dict, dict]:
         if drs_uri is None:
@@ -232,6 +294,7 @@ class Gen3Methods(MonitoringUtilityMethods):
 
 class Scheduler:
     def __init__(self):
+        super().__init__()
         self.stop_run_continuously = None
 
     @staticmethod
@@ -249,6 +312,8 @@ class Scheduler:
         cease_continuous_run = threading.Event()
 
         class ScheduleThread(threading.Thread):
+            def __init__(self):
+                super().__init__()
 
             def run(self):
                 while not cease_continuous_run.is_set():
@@ -294,8 +359,12 @@ def catch_exceptions(cancel_on_failure=False):
 class ResponseTimeMonitor(Scheduler):
     interval_seconds = 30
 
+    def __init__(self):
+        super().__init__()
+
     class AbstractResponseTimeReporter(ABC):
         def __init__(self, output_filename):
+            super().__init__()
             self.output_filename = output_filename
 
         @abstractmethod
@@ -346,6 +415,7 @@ class ResponseTimeMonitor(Scheduler):
             terra_user_token = self.get_terra_user_pet_sa_token()
 
             # Get Martha response time
+
             resp_json, mon_info = self.get_martha_drs_response(terra_user_token)
             monitoring_infos['martha'] = mon_info
             return monitoring_infos
@@ -423,12 +493,13 @@ class ResponseTimeMonitor(Scheduler):
     def configure_monitoring(self):
         schedule.every(self.interval_seconds).seconds.do(super().run_threaded, self.check_drs_flow_response_times)
         schedule.every(self.interval_seconds).seconds.do(super().run_threaded, self.check_martha_response_time)
-        schedule.every(self.interval_seconds).seconds.do(super().run_threaded, self.check_bond_external_identity_response_times)
+        schedule.every(self.interval_seconds).seconds.do(super().run_threaded,
+                                                         self.check_bond_external_identity_response_times)
         schedule.every(self.interval_seconds).seconds.do(super().run_threaded, self.check_fence_user_info_response_time)
 
 
 def configure_logging(output_directory_path: str) -> logging.Logger:
-    log_filename = os.path.join(output_directory_path, "monitor_response_times.log")
+    log_filename = Path(os.path.join(output_directory_path, "monitor_response_times.log")).resolve().as_posix()
     logging.basicConfig(
         format='%(asctime)s %(levelname)-8s %(threadName)-12s %(message)s',
         datefmt='%Y/%m/%d %H:%M:%S',
@@ -443,6 +514,10 @@ def configure_logging(output_directory_path: str) -> logging.Logger:
 def parse_cmdline() -> argparse.Namespace:
     utc_timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
     parser = argparse.ArgumentParser()
+    parser.add_argument('--project-name', type=str, required=True,
+                        help="Project to monitor. Supported values: BDC")
+    parser.add_argument('--terra-deployment-tier', type=str, required=True,
+                        help="Project to monitor. Supported values: DEV")
     parser.add_argument('--output-dir', type=str, required=False,
                         default=f"./monitoring_output_{utc_timestamp}",
                         help="Directory to contain monitoring output files")
@@ -453,13 +528,32 @@ def parse_cmdline() -> argparse.Namespace:
 def create_output_directory(directory_path: str) -> None:
     Path(directory_path).mkdir(parents=True, exist_ok=True)
 
+
+def set_configuration(args: argparse.Namespace) -> None:
+    global output_dir, logger
+    DeploymentInfo.set_project(args.project_name)
+    DeploymentInfo.set_terra_deployment_tier(args.terra_deployment_tier)
+
+    # Call these now to raise any errors now rather than later while running.
+    DeploymentInfo.terra_factory()
+    DeploymentInfo.gen3_factory()
+
+    create_output_directory(args.output_dir)
+    output_dir = args.output_dir
+    logger = configure_logging(args.output_dir)
+
+    logger.info("Monitoring Configuration:")
+    logger.info(f"Project: {args.project_name}")
+    logger.info(f"Terra Deployment Tier: {args.terra_deployment_tier}")
+
+
 #
 # Main Execution
 #
+
+
 args = parse_cmdline()
-create_output_directory(args.output_dir)
-output_dir = args.output_dir
-logger = configure_logging(args.output_dir)
+set_configuration(args)
 
 # Configure and start monitoring
 responseTimeMonitor = ResponseTimeMonitor()
@@ -474,7 +568,7 @@ responseTimeMonitor.start_monitoring()
 # # Stop monitoring
 # responseTimeMonitor.stop_monitoring()
 
-print("Running ", end = '')
+print("Running ", end='')
 while True:
-    print(".", end = '')
+    print(".", end='')
     time.sleep(10)
