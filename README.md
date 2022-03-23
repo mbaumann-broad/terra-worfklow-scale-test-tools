@@ -58,5 +58,5 @@ If this directory does not exist, then create it by running the following on the
 5. Run: `cd "$WORKSPACE_NAME/edit"`
 6. If the `terra-workflow-scale-test-tools` directory does not exist here, then:  
     Run: `git clone https://github.com/mbaumann-broad/terra-workflow-scale-test-tools.git`
-7. Run: `cp terra-workflow-scale-test-tools/setup_workflow_test_tools.ipynb .`
+7. Run: `gsutil cp terra-workflow-scale-test-tools/notebooks/setup_workflow_test_tools.ipynb "$WORKSPACE_BUCKET/notebooks/"`
 8. In the Terra workspace UI, select the Notebooks tab, then open the `setup_workflow_test_tools` Notebook in Edit mode and continue with the instructions there.
