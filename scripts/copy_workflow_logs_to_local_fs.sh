@@ -71,7 +71,7 @@ function copy_gcs_uris_to_local_fs {
   MAX_CONCURRENT_GSUTIL_PROCS=20
 
   # Create a file containing the source and destination parameters for gsutil copy.
-  GSUTIL_COPY_ARGS_FILE=$WORKFLOW_LOG_DIR/drs_log_gsutil_copy_args.txt
+  GSUTIL_COPY_ARGS_FILE="$WORKFLOW_LOG_DIR/drs_log_gsutil_copy_args.txt"
   rm -f "$GSUTIL_COPY_ARGS_FILE"
   while read -r drs_log_gcs_uri; do
       # Construct the local path based on the GCS URI
