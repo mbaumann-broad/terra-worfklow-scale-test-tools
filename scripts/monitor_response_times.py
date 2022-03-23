@@ -65,6 +65,10 @@ class DeploymentInfo:
                                           "fence",
                                           "us-central1-broad-dsde-dev.cloudfunctions.net")
 
+    __terra_bdc_alpha = TerraDeploymentInfo("broad-bond-alpha.appspot.com",
+                                          "fence",
+                                          "us-central1-broad-dsde-alpha.cloudfunctions.net")
+
     @dataclass
     class Gen3DeploymentInfo:
         gen3_host: str
@@ -82,6 +86,8 @@ class DeploymentInfo:
         if cls._terra_deployment_info is None:
             if cls._project == cls.Project.BDC and cls._terra_deployment_tier == cls.TerraDeploymentTier.DEV:
                 cls._terra_deployment_info = cls.__terra_bdc_dev
+            elif cls._project == cls.Project.BDC and cls._terra_deployment_tier == cls.TerraDeploymentTier.ALPHA:
+                cls._terra_deployment_info = cls.__terra_bdc_alpha
             else:
                 raise cls.UnsupportedConfigurationException(
                     f"The combination of project \'{cls._project.name}\' and Terra deployment tier \'{cls._terra_deployment_tier.name}\' is currently unsupported.")
@@ -517,7 +523,7 @@ def parse_cmdline() -> argparse.Namespace:
     parser.add_argument('--project-name', type=str, required=True,
                         help="Project to monitor. Supported values: BDC")
     parser.add_argument('--terra-deployment-tier', type=str, required=True,
-                        help="Project to monitor. Supported values: DEV")
+                        help="Project to monitor. Supported values: DEV, ALPHA")
     parser.add_argument('--output-dir', type=str, required=False,
                         default=f"./monitoring_output_{utc_timestamp}",
                         help="Directory to contain monitoring output files")
