@@ -9,6 +9,12 @@ This includes:
 * Extraction and graphical reporting of the workflow DRS data access rate
 * Monitoring and graphical reporting of the response times for key services/endpoints during the test 
 
+These tools were designed to work:   
+* On all Terra deployment tiers (currently `dev` and `alpha` are supported)  
+* With all Terra-supported Gen3 projects (currently NHLBI BioData Catalyst is supported)  
+
+The response time monitoring tools can be extended to include additional services (e.g. `terra-drs-hub`) and endpoints.
+`
 Note: These instructions are written for "newer" workspaces that use the project-per-workspace model.
 Older (non-PPW) workspaces can also be used, with some slight modifications to the instructions left as an exercise for the reader/tester.
 
