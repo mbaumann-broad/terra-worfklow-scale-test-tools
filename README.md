@@ -33,14 +33,22 @@ Older (non-PPW) workspaces can also be used, with some slight modifications to t
 ### Bond Endpoint Response Times
 ![Bond Endpoint Response Times](doc/images/example_graphs/example_bond_endpoint_response_times_graph.png)
 
+# Test Tool Setup
+Setting up the test tools is (semi-)automated because Cloud Environments are deleted weekly (typically on Sundays)
+in some Terra pre-production tiers (e.g. `dev`, maybe others).
+This then requires frequent re-setup of the test environment.
 
-# Bootstrap Setup
+On tiers where the Cloud Environment is regularly deleted, using `gsutil rsync` to backup the
+persistent disk to the workspace bucket at the end of the week is recommended.
+
+## Bootstrap Setup
 1. Login to Terra in the desired Terra deployment tier (dev, alpha, ..., prod) in which the tests will be run.  
    Login as `b.adm.firec@gmail.com` (although other user ids also work, if desired)
 2. In Terra, create/start a Jupyter Cloud Environment.  
    Recommended miniumum configuration:
    * Image: Current Default (for Python, etc.)
    * CPUs: 4 (or more)
+   * Memory: The minimum provided for the number of CPUs
    * Disk space: 50 GB (or more)
 3. Start the Terra Terminal for this Cloud Environment
 4. The recommended way to use these tools is to do all work in the workspace notebook `edit` directory:    
