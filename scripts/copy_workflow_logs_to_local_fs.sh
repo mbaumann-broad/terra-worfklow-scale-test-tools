@@ -80,7 +80,7 @@ function copy_gcs_uris_to_local_fs {
       local_path="$local_fs_dest_dir/$uri_path"
 
       # Write the gsutil copy source URI and destination file
-      echo "$drs_log_gcs_uri $local_path" >> "$GSUTIL_COPY_ARGS_FILE"
+      echo "$drs_log_gcs_uri \"$local_path\"" >> "$GSUTIL_COPY_ARGS_FILE"
   done < "$gcs_uris_file"
 
   # Verify the line count of the in log list file and the args file is the same.
