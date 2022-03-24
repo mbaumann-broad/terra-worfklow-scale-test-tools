@@ -37,7 +37,7 @@ function parse_options {
 function extract_drs_localization_log_entries {
   # Extract the DRS localization log entries from the workflow logs on the local file system
   # shellcheck disable=SC2038
-  time (find "$WORKFLOW_LOG_DIR" -type f | xargs grep -F --no-filename "Localizing input drs://" > "${DRS_LOCALIZATION_LOG_LINES}")
+  time (find "$WORKFLOW_LOG_DIR" -type f -print0 | xargs -0 grep -F --no-filename "Localizing input drs://" > "${DRS_LOCALIZATION_LOG_LINES}")
 }
 
 function extract_drs_localization_timestamps {
