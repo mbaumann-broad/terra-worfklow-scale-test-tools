@@ -12,7 +12,8 @@ set -euo pipefail
 function parse_options {
 
   function usage {
-    echo "Usage: `basename $0` -s <GCS URI of submison folder> -d <local file system directory path>" 1>&2; exit 1;
+    cmd_basename=$(basename "$0")
+    echo "Usage: "${cmd_basename}" -s <GCS URI of submison folder> -d <local file system directory path>" 1>&2; exit 1;
   }
 
   local OPTIND
@@ -90,7 +91,7 @@ function copy_gcs_uris_to_local_fs {
   xargs -P $MAX_CONCURRENT_GSUTIL_PROCS -a "$GSUTIL_COPY_ARGS_FILE" -n 2 gsutil cp
 }
 
-parse_options $@
+parse_options "$@"
 echo "GCS_SUBMISSION_FOLDER=${GCS_SUBMISSION_FOLDER}"
 echo "WORKFLOW_LOG_DIR=${WORKFLOW_LOG_DIR}"
 

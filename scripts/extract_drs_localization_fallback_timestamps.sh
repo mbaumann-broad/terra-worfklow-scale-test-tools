@@ -14,7 +14,8 @@ set -euxo pipefail
 function parse_options {
 
   function usage {
-    echo "Usage: "$(basename $0)" -d <workflow test results directory path>" 1>&2; exit 1;
+    cmd_basename=$(basename "$0")
+    echo "Usage: "${cmd_basename}" -d <workflow test results directory path>" 1>&2; exit 1;
   }
 
   local OPTIND
@@ -56,7 +57,7 @@ function convert_timestamps_to_timeseries() {
   sed -e 's/$/\t1/' "${DRS_LOCALIZATION_FALLBACK_TIMESTAMPS}" >> "${DRS_LOCALIZATION_FALLBACK_TIMESERIES}"
 }
 
-parse_options $@
+parse_options "$@"
 
 WORKFLOW_LOG_DIR="${WF_TEST_RESULTS_DIR}/workflow-logs"
 DRS_LOCALIZATION_FALLBACK_LOG_LINES="${WF_TEST_RESULTS_DIR}/drs_localization_fallback_log_lines.txt"
