@@ -1,4 +1,9 @@
 
+"""Terra Workflow Information
+This script/module provides a simple data access object (DAO) for information about a Terra workflow.
+It is primarily designed to be imported and used in Jupyter Notebooks.
+"""
+
 from datetime import datetime
 
 import requests
@@ -10,6 +15,8 @@ import requests
 
 
 class WorkflowDAO:
+    """ Workflow information data access class
+    """
     TERRA_DEPLOYMENT_TIER = "alpha"
     FIRECLOUD_API_URL = f"https://firecloud-orchestration.dsde-{TERRA_DEPLOYMENT_TIER}.broadinstitute.org"
 
@@ -46,6 +53,9 @@ class WorkflowDAO:
         if self.workflow_info is None:
             self.update()
         return self.workflow_info
+
+    def get_workflow_status(self) -> str:
+        return self.get_workflow_info()['status']
 
     def is_in_process(self) -> bool:
         IN_PROCESS_STATUS_LIST = ["Queued", "Submitted", "Running"]
