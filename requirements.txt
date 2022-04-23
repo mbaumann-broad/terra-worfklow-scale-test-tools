@@ -1,4 +1,5 @@
 google-auth
+ipywidgets
 matplotlib
 pandas
 psutil
