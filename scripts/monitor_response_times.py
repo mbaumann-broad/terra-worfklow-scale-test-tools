@@ -4,8 +4,10 @@ import functools
 import json
 import logging
 import os
+import psutil
 import threading
 import time
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -66,8 +68,8 @@ class DeploymentInfo:
                                           "us-central1-broad-dsde-dev.cloudfunctions.net")
 
     __terra_bdc_alpha = TerraDeploymentInfo("broad-bond-alpha.appspot.com",
-                                          "fence",
-                                          "us-central1-broad-dsde-alpha.cloudfunctions.net")
+                                            "fence",
+                                            "us-central1-broad-dsde-alpha.cloudfunctions.net")
 
     @dataclass
     class Gen3DeploymentInfo:
@@ -517,7 +519,7 @@ def configure_logging(output_directory_path: str) -> logging.Logger:
     return logging.getLogger()
 
 
-def parse_cmdline() -> argparse.Namespace:
+def parse_arg_list(arg_list: list = None) -> argparse.Namespace:
     utc_timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
     parser = argparse.ArgumentParser()
     parser.add_argument('--project-name', type=str, required=True,
@@ -527,7 +529,7 @@ def parse_cmdline() -> argparse.Namespace:
     parser.add_argument('--output-dir', type=str, required=False,
                         default=f"./monitoring_output_{utc_timestamp}",
                         help="Directory to contain monitoring output files")
-    args = parser.parse_args()
+    args = parser.parse_args(arg_list)
     return args
 
 
@@ -553,28 +555,52 @@ def set_configuration(args: argparse.Namespace) -> None:
     logger.info(f"Terra Deployment Tier: {args.terra_deployment_tier}")
 
 
+def main(arg_list: list = None) -> None:
+    args = parse_arg_list(arg_list)
+    set_configuration(args)
+
+    # Configure and start monitoring
+    responseTimeMonitor = ResponseTimeMonitor()
+    responseTimeMonitor.configure_monitoring()
+    responseTimeMonitor.start_monitoring()
+
 #
-# Main Execution
+# Start/Stop monitoring using a background process
 #
 
 
-args = parse_cmdline()
-set_configuration(args)
+def start_monitoring_background_process(terra_deployment_tier: str,
+                                        project_to_monitor: str,
+                                        monitoring_output_directory: str)\
+        -> psutil.Process:
+    print("Starting monitoring background process ...")
+    process = psutil.Popen(["python3",
+                            __file__,
+                            "--terra-deployment-tier", terra_deployment_tier,
+                            "--project", project_to_monitor,
+                            "--output-dir", monitoring_output_directory])
+    print(f"Started {process}")
+    return process
 
-# Configure and start monitoring
-responseTimeMonitor = ResponseTimeMonitor()
-responseTimeMonitor.configure_monitoring()
-responseTimeMonitor.start_monitoring()
 
-# # Run for a while
-# print("Starting sleep ...")
-# time.sleep(90)
-# print("Done sleeping")
-#
-# # Stop monitoring
-# responseTimeMonitor.stop_monitoring()
+def stop_monitoring_background_process(process: psutil.Process) -> None:
+    _termination_wait_seconds = 60
+    print("Stopping monitoring background process ...")
+    process.terminate()
+    print("Waiting up {_termination_wait_seconds} seconds for process to terminate.")
+    process.wait(_termination_wait_seconds)
+    print("Stopped monitoring background process.")
 
-print("Running ", end='')
-while True:
-    print(".", end='')
-    time.sleep(10)
+
+if __name__ == "__main__":
+    main()
+
+    # # Run for a while
+    # sleep_seconds = 90
+    # print(f"Sleeping for {sleep_seconds} ...")
+    # time.sleep(sleep_seconds)
+    # print("Done sleeping")
+    #
+    # # Stop monitoring
+    # responseTimeMonitor.stop_monitoring()
+
