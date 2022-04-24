@@ -17,13 +17,13 @@ import requests
 class WorkflowDAO:
     """ Workflow information data access class
     """
-    TERRA_DEPLOYMENT_TIER = "alpha"
-    FIRECLOUD_API_URL = f"https://firecloud-orchestration.dsde-{TERRA_DEPLOYMENT_TIER}.broadinstitute.org"
 
-    def __init__(self, workspace_namespace: str, workspace_name: str, wf_submission_id: str):
+    def __init__(self, terra_deployment_tier, workspace_namespace: str, workspace_name: str, wf_submission_id: str):
+        self.terra_deployment_tier = terra_deployment_tier
         self.workspace_namespace = workspace_namespace
         self.workspace_name = workspace_name
         self.wf_submission_id = wf_submission_id
+        self.firecloud_api_url = f"https://firecloud-orchestration.dsde-{self.terra_deployment_tier.lower()}.broadinstitute.org"
         self.workflow_info: dict = None
 
     @staticmethod
@@ -43,7 +43,7 @@ class WorkflowDAO:
             'content-type': "application/json"
         }
 
-        resp = requests.get(f"{self.FIRECLOUD_API_URL}/api/workspaces/{self.workspace_namespace}/{self.workspace_name}/submissions/{self.wf_submission_id}",
+        resp = requests.get(f"{self.firecloud_api_url}/api/workspaces/{self.workspace_namespace}/{self.workspace_name}/submissions/{self.wf_submission_id}",
                             headers=headers)
         print(f"Request URL: {resp.request.url}")
         resp.raise_for_status()
