@@ -5,7 +5,7 @@ from IPython.display import display
 class UserInputUI:
     def __init__(self):
         self.submission_id_tb = widgets.Text(
-            description='Workflow Submission Id:',
+            description='Submission Id:',
             value=None,
             placeholder='XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX',
             style={'description_width': 'initial'},
