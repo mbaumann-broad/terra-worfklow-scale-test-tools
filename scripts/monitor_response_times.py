@@ -555,17 +555,40 @@ def set_configuration(args: argparse.Namespace) -> None:
     logger.info(f"Terra Deployment Tier: {args.terra_deployment_tier}")
 
 
+responseTimeMonitor: ResponseTimeMonitor = None
+
+
 def main(arg_list: list = None) -> None:
     args = parse_arg_list(arg_list)
     set_configuration(args)
 
     # Configure and start monitoring
+    global responseTimeMonitor
     responseTimeMonitor = ResponseTimeMonitor()
     responseTimeMonitor.configure_monitoring()
     responseTimeMonitor.start_monitoring()
 
 #
-# Start/Stop monitoring using a background process
+# Start/Stop monitoring in the current (callers) process
+#
+
+def start_monitoring_in_current_process(terra_deployment_tier: str,
+                                        project_to_monitor: str,
+                                        monitoring_output_directory: str) -> None:
+
+    arg_list = ["--terra-deployment-tier", terra_deployment_tier,
+                "--project", project_to_monitor,
+                "--output-dir", monitoring_output_directory]
+    main(arg_list)
+
+
+def stop_monitoring_in_current_process() -> None:
+    global responseTimeMonitor
+    responseTimeMonitor.stop_monitoring()
+
+
+#
+# Start/Stop monitoring using a new background process
 #
 
 
