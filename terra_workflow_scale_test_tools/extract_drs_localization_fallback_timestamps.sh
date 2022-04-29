@@ -1,5 +1,5 @@
 #! /usr/bin/env bash
-set -euxo pipefail
+set -euo pipefail
 
 #
 # Extract the DRS localization "fallback" timestamps from workflow logs
