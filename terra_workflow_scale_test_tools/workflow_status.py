@@ -5,6 +5,7 @@ It is primarily designed to be imported and used in Jupyter Notebooks.
 
 from datetime import datetime
 import json
+import time
 
 import requests
 
@@ -95,6 +96,17 @@ class WorkflowDAO:
                           f"Use Call Cache: {self.get_use_call_cache()}",
                           f"Submission Status: {self.get_submission_status()}",
                           f"User Comment: {self.get_user_comment()}"])
+
+
+def wait_for_workflow_to_complete(workflow_dao: WorkflowDAO) -> None:
+    sleep_seconds = 30
+    while workflow_dao.is_in_process():
+        print(f"Submission status: {workflow_dao.get_submission_status()}")
+        print(f"Sleeping for {sleep_seconds} seconds ...")
+        time.sleep(sleep_seconds)
+        print("Getting current submission status ... ")
+        workflow_dao.update()
+    print(f"Final Submission status: {workflow_dao.get_submission_status()}")
 
 
 if __name__ == "__main__":
