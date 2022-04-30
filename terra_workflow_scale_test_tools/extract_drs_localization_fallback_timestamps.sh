@@ -44,7 +44,8 @@ function extract_drs_localization_fallback_log_entries {
   # across multiple lines. This is performed using the GNU grep support for
   # PERL-compatible Regular Expressions (PCRE).
   # shellcheck disable=SC2038
-  time (find "$WORKFLOW_LOG_DIR" -type f -print0 | xargs -0 grep --no-filename -Pzo "\d\d\d\d/\d\d/\d\d.*Localizing input drs:.*\nRequester Pays project ID is.*\nAttempting to download.*\nSuccessfully activated service account.*" | sed -z -e 's/\n/  /g' | tr '\0' '\n' > "${DRS_LOCALIZATION_FALLBACK_LOG_LINES}")
+  (find "$WORKFLOW_LOG_DIR" -type f -print0 | xargs -0 grep --no-filename -Pzo "\d\d\d\d/\d\d/\d\d.*Localizing input drs:.*\nRequester Pays project ID is.*\nAttempting to download.*\nSuccessfully activated service account.*" | sed -z -e 's/\n/  /g' | tr '\0' '\n' > "${DRS_LOCALIZATION_FALLBACK_LOG_LINES}")
+  echo DRS URI fallback localization log lines found: $(wc -l "${DRS_LOCALIZATION_FALLBACK_LOG_LINES}" | cut -f 1 --delimiter=\ )
 }
 
 function extract_drs_localization_fallback_timestamps {
