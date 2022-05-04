@@ -89,7 +89,7 @@ class DeploymentInfo:
                                             "drs://dg.712C:dg.712C/fa640b0e-9779-452f-99a6-16d833d15bd0")
 
     __gen3_crdc_staging = Gen3DeploymentInfo("nci-crdc-staging.datacommons.io",
-                                            "drs://dg.4DFC:/ddacaa74-97a9-4a0e-aa36-3e65fc8382d5")
+                                            "drs://dg.4DFC:ddacaa74-97a9-4a0e-aa36-3e65fc8382d5")
 
 
     class UnsupportedConfigurationException(Exception):
