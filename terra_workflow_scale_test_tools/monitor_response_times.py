@@ -71,6 +71,14 @@ class DeploymentInfo:
                                             "fence",
                                             "us-central1-broad-dsde-alpha.cloudfunctions.net")
 
+    __terra_crdc_dev = TerraDeploymentInfo("broad-bond-dev.appspot.com",
+                                           "dcf-fence",
+                                           "us-central1-broad-dsde-dev.cloudfunctions.net")
+
+    __terra_crdc_alpha = TerraDeploymentInfo("broad-bond-alpha.appspot.com",
+                                             "dcf-fence",
+                                             "us-central1-broad-dsde-alpha.cloudfunctions.net")
+
     @dataclass
     class Gen3DeploymentInfo:
         gen3_host: str
@@ -80,29 +88,45 @@ class DeploymentInfo:
     __gen3_bdc_staging = Gen3DeploymentInfo("staging.gen3.biodatacatalyst.nhlbi.nih.gov",
                                             "drs://dg.712C:dg.712C/fa640b0e-9779-452f-99a6-16d833d15bd0")
 
+    __gen3_crdc_staging = Gen3DeploymentInfo("nci-crdc-staging.datacommons.io",
+                                            "drs://dg.4DFC:/ddacaa74-97a9-4a0e-aa36-3e65fc8382d5")
+
+
     class UnsupportedConfigurationException(Exception):
         pass
 
     @classmethod
     def terra_factory(cls) -> TerraDeploymentInfo:
         if cls._terra_deployment_info is None:
-            if cls._project == cls.Project.BDC and cls._terra_deployment_tier == cls.TerraDeploymentTier.DEV:
-                cls._terra_deployment_info = cls.__terra_bdc_dev
-            elif cls._project == cls.Project.BDC and cls._terra_deployment_tier == cls.TerraDeploymentTier.ALPHA:
-                cls._terra_deployment_info = cls.__terra_bdc_alpha
-            else:
+            if cls._project == cls.Project.BDC:
+                if cls._terra_deployment_tier == cls.TerraDeploymentTier.DEV:
+                    cls._terra_deployment_info = cls.__terra_bdc_dev
+                elif cls._terra_deployment_tier == cls.TerraDeploymentTier.ALPHA:
+                    cls._terra_deployment_info = cls.__terra_bdc_alpha
+            elif cls._project == cls.Project.CRDC:
+                if cls._terra_deployment_tier == cls.TerraDeploymentTier.DEV:
+                    cls._terra_deployment_info = cls.__terra_crdc_dev
+                elif cls._terra_deployment_tier == cls.TerraDeploymentTier.ALPHA:
+                    cls._terra_deployment_info = cls.__terra_crdc_alpha
+
+            if cls._terra_deployment_info is None:
                 raise cls.UnsupportedConfigurationException(
-                    f"The combination of project \'{cls._project.name}\' and Terra deployment tier \'{cls._terra_deployment_tier.name}\' is currently unsupported.")
+                    f"Response time monitoring for the combination of project \'{cls._project.name}\' and Terra deployment tier \'{cls._terra_deployment_tier.name}\' is currently unsupported.")
         return cls._terra_deployment_info
 
     @classmethod
     def gen3_factory(cls) -> Gen3DeploymentInfo:
         if cls._gen3_deployment_info is None:
-            if cls._project == cls.Project.BDC and cls._terra_deployment_tier != cls.TerraDeploymentTier.PROD:
-                cls._gen3_deployment_info = cls.__gen3_bdc_staging
-            else:
+            if cls._project == cls.Project.BDC:
+                if cls._terra_deployment_tier != cls.TerraDeploymentTier.PROD:
+                    cls._gen3_deployment_info = cls.__gen3_bdc_staging
+            elif cls._project == cls.Project.CRDC:
+                if cls._terra_deployment_tier != cls.TerraDeploymentTier.PROD:
+                    cls._gen3_deployment_info = cls.__gen3_crdc_staging
+
+            if cls._gen3_deployment_info is None:
                 raise cls.UnsupportedConfigurationException(
-                    f"The combination of project '{cls._project.name}' and Terra deployment tier '{cls._terra_deployment_tier.name}' is currently unsupported.")
+                    f"Response time monitoring for the combination of project '{cls._project.name}' and Terra deployment tier '{cls._terra_deployment_tier.name}' is currently unsupported.")
         return cls._gen3_deployment_info
 
 
