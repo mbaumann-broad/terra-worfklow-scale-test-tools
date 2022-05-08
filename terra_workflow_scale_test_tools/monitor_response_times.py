@@ -71,6 +71,10 @@ class DeploymentInfo:
                                             "fence",
                                             "us-central1-broad-dsde-alpha.cloudfunctions.net")
 
+    __terra_bdc_prod = TerraDeploymentInfo("broad-bond-prod.appspot.com",
+                                            "fence",
+                                            "us-central1-broad-dsde-prod.cloudfunctions.net")
+
     __terra_crdc_dev = TerraDeploymentInfo("broad-bond-dev.appspot.com",
                                            "dcf-fence",
                                            "us-central1-broad-dsde-dev.cloudfunctions.net")
@@ -78,6 +82,10 @@ class DeploymentInfo:
     __terra_crdc_alpha = TerraDeploymentInfo("broad-bond-alpha.appspot.com",
                                              "dcf-fence",
                                              "us-central1-broad-dsde-alpha.cloudfunctions.net")
+
+    __terra_crdc_prod = TerraDeploymentInfo("broad-bond-prod.appspot.com",
+                                             "dcf-fence",
+                                             "us-central1-broad-dsde-prod.cloudfunctions.net")
 
     @dataclass
     class Gen3DeploymentInfo:
@@ -88,9 +96,14 @@ class DeploymentInfo:
     __gen3_bdc_staging = Gen3DeploymentInfo("staging.gen3.biodatacatalyst.nhlbi.nih.gov",
                                             "drs://dg.712C:dg.712C/fa640b0e-9779-452f-99a6-16d833d15bd0")
 
+    __gen3_bdc_prod = Gen3DeploymentInfo("gen3.biodatacatalyst.nhlbi.nih.gov",
+                                         "drs://dg.4503:dg.4503/15fdd543-9875-4edf-8bc2-22985473dab6")
+
     __gen3_crdc_staging = Gen3DeploymentInfo("nci-crdc-staging.datacommons.io",
                                             "drs://dg.4DFC:ddacaa74-97a9-4a0e-aa36-3e65fc8382d5")
 
+    __gen3_crdc_prod = Gen3DeploymentInfo("nci-crdc.datacommons.io",
+                                          "drs://dg.4DFC:011a6a54-1bfe-4df9-ae24-990b12a812d3")
 
     class UnsupportedConfigurationException(Exception):
         pass
@@ -103,11 +116,15 @@ class DeploymentInfo:
                     cls._terra_deployment_info = cls.__terra_bdc_dev
                 elif cls._terra_deployment_tier == cls.TerraDeploymentTier.ALPHA:
                     cls._terra_deployment_info = cls.__terra_bdc_alpha
+                elif cls._terra_deployment_tier == cls.TerraDeploymentTier.PROD:
+                    cls._terra_deployment_info = cls.__terra_bdc_prod
             elif cls._project == cls.Project.CRDC:
                 if cls._terra_deployment_tier == cls.TerraDeploymentTier.DEV:
                     cls._terra_deployment_info = cls.__terra_crdc_dev
                 elif cls._terra_deployment_tier == cls.TerraDeploymentTier.ALPHA:
                     cls._terra_deployment_info = cls.__terra_crdc_alpha
+                elif cls._terra_deployment_tier == cls.TerraDeploymentTier.PROD:
+                    cls._terra_deployment_info = cls.__terra_crdc_prod
 
             if cls._terra_deployment_info is None:
                 raise cls.UnsupportedConfigurationException(
@@ -118,10 +135,14 @@ class DeploymentInfo:
     def gen3_factory(cls) -> Gen3DeploymentInfo:
         if cls._gen3_deployment_info is None:
             if cls._project == cls.Project.BDC:
-                if cls._terra_deployment_tier != cls.TerraDeploymentTier.PROD:
+                if cls._terra_deployment_tier == cls.TerraDeploymentTier.PROD:
+                    cls._gen3_deployment_info = cls.__gen3_bdc_prod
+                else:
                     cls._gen3_deployment_info = cls.__gen3_bdc_staging
             elif cls._project == cls.Project.CRDC:
-                if cls._terra_deployment_tier != cls.TerraDeploymentTier.PROD:
+                if cls._terra_deployment_tier == cls.TerraDeploymentTier.PROD:
+                    cls._gen3_deployment_info = cls.__gen3_crdc_prod
+                else:
                     cls._gen3_deployment_info = cls.__gen3_crdc_staging
 
             if cls._gen3_deployment_info is None:

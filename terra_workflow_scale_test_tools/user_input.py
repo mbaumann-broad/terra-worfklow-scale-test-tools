@@ -22,7 +22,7 @@ class UserInputUI:
 
         self.terra_deployment_tier_rb = widgets.RadioButtons(
             description='Terra Deployment Tier:',
-            options=['DEV', 'ALPHA'],
+            options=['DEV', 'ALPHA', 'PROD'],
             value='ALPHA',  # Defaults to 'ALPHA'
             layout={'width': 'max-content'},
             style={'description_width': 'initial'}
