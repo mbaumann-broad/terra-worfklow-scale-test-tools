@@ -1,13 +1,18 @@
 import os
 from setuptools import setup, find_packages
 
-VERSION = "1.1.0"
+
+def get_version() -> str:
+    pkg_root = os.path.abspath(os.path.join(os.path.dirname(__file__)))  # noqa
+    filepath = os.path.join(pkg_root, "version.py")
+    with open(filepath) as fh:
+        return eval(fh.read().strip())
 
 install_requires = [line.rstrip() for line in open(os.path.join(os.path.dirname(__file__), "requirements.txt"))]
 
 setup(
     name="terra_workflow_scale_test_tools",
-    version=VERSION,
+    version=get_version(),
     description="Tools for GA4GH DRS data access scale testing using Terra workflows.",
     author="Michael Baumann",
     author_email="mbaumann@broadinstitute.org",
